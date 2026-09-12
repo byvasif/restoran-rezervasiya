@@ -77,3 +77,20 @@ export function dateStringToDbDate(date: string): Date {
 export function dbDateToDateString(date: Date): string {
   return DateTime.fromJSDate(date, { zone: 'utc' }).toFormat(DATE_FORMAT)
 }
+
+/** UTC anını verilmiş zonanın `HH:mm` divar saatına çevirir. */
+export function utcToZoneTime(instant: Date, timezone: string): string {
+  return DateTime.fromJSDate(instant, { zone: timezone }).toFormat(TIME_FORMAT)
+}
+
+/** UTC anının verilmiş zonadakı təqvim tarixi. */
+export function utcToZoneDate(instant: Date, timezone: string): string {
+  return DateTime.fromJSDate(instant, { zone: timezone }).toFormat(DATE_FORMAT)
+}
+
+/** Verilmiş tarixin zonada başlanğıc və bitmə anları. */
+export function dayBounds(date: string, timezone: string): { start: Date; end: Date } {
+  const start = DateTime.fromFormat(date, DATE_FORMAT, { zone: timezone }).startOf('day')
+  if (!start.isValid) throw new Error(`Yanlış tarix: ${date}`)
+  return { start: start.toJSDate(), end: start.plus({ days: 1 }).toJSDate() }
+}
