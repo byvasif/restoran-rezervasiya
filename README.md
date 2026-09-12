@@ -115,31 +115,67 @@ token təyin edir. Söndürmək üçün: `npm run bot:set-webhook -- --delete`.
 
 ## 7. OAuth 2.0 credentials yaradılması
 
-1. **APIs & Services → OAuth consent screen**: User Type `External`, tətbiq adı
-   və dəstək e-poçtunu doldurun.
-2. **Scopes** bölməsində `https://www.googleapis.com/auth/calendar` əlavə edin.
-3. **Test users** bölməsinə restoranın Google hesabını əlavə edin.
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
-   - Application type: **Web application**
-   - Authorized redirect URIs: `http://localhost:53682/oauth2callback`
-5. Alınan **Client ID** və **Client Secret** dəyərlərini `.env` faylına yazın,
-   `GOOGLE_REDIRECT_URI`-ni də eyni ünvanla doldurun.
+1. **APIs & Services → OAuth consent screen** (yeni interfeysdə **Google Auth
+   Platform**): User Type `External`, tətbiq adı və dəstək e-poçtunu doldurun.
+2. **Data Access** → **Add or remove scopes** →
+   `https://www.googleapis.com/auth/calendar` seçin → Update → Save.
+3. **Audience** → restoranın Google hesabını **Test users** siyahısına əlavə edin,
+   sonra **Publish app** düyməsini basın.
 
-## 8. Google Calendar refresh token əldə edilməsi
+   > **Vacib:** Testing rejimində Google refresh tokeni 7 gündən sonra ləğv edir
+   > və rezervasiyalar səssizcə dayanır. Publish etdikdən sonra bu limit aradan
+   > qalxır. Google "verification" təklif edərsə, tətbiq yalnız restoranın öz
+   > hesabı tərəfindən istifadə olunduğu üçün müraciət etmək lazım deyil.
+
+4. **Clients → Create OAuth client**:
+   - Application type: **Web application**
+   - **Authorized redirect URIs → Add URI**:
+     `https://<sizin-domeniniz>/api/google/callback`
+     (lokal iş üçün əlavə olaraq `http://localhost:3200/api/google/callback`)
+   - **Authorized JavaScript origins** boş qala bilər — ora yol (`/...`) yazılmır.
+5. Alınan **Client ID** və **Client Secret** dəyərlərini `.env`-ə yazın:
+   ```
+   GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
+   GOOGLE_CLIENT_SECRET="GOCSPX-..."
+   ```
+
+## 8. Təqvimin qoşulması (brauzerdən, terminalsız)
+
+Refresh token **environment-də deyil, bazada** saxlanılır — sahibkar təqvimi
+brauzerdən qoşur. Bunun üçün qoşulma linkini qoruyan açar lazımdır:
 
 ```bash
-npm run google:token
+openssl rand -hex 24        # çıxan dəyəri SETUP_SECRET-ə yazın
 ```
 
-Skript terminalda bir link göstərəcək:
+`.env` (və production mühitində) `SETUP_SECRET` təyin edildikdən sonra sahibkar
+bu linki açır:
 
-1. Linki brauzerdə açın, restoranın Google hesabı ilə daxil olun və icazə verin.
-2. İcazədən sonra terminalda `GOOGLE_REFRESH_TOKEN="..."` sətri görünəcək.
-3. Həmin dəyəri `.env` faylına köçürün.
+```
+https://<sizin-domeniniz>/api/google/connect?key=<SETUP_SECRET>
+```
+
+Axın: Google hesabı seçilir → "Google bu tətbiqi doğrulamadı" xəbərdarlığında
+**Davam et** → təqvim icazəsi verilir → **"Təqvim qoşuldu"** səhifəsi açılır və
+hansı hesabla qoşulduğu göstərilir.
+
+Token bazadakı `business_settings.google_refresh_token` sahəsinə yazılır. Token
+ölərsə və ya başqa təqvimə keçmək lazım gələrsə, sahibkar eyni linki yenidən
+açır — nə terminal, nə yenidən deploy lazımdır.
+
+Qoşulmanın vəziyyətini yoxlamaq üçün:
+
+```bash
+curl https://<sizin-domeniniz>/api/health
+# {"status":"ok","database":"up","calendar":{"connected":true,"source":"database",...}}
+```
 
 `GOOGLE_CALENDAR_ID` üçün: sahibkarın əsas təqvimi olacaqsa `primary` yazın.
 Ayrıca təqvim istifadə olunacaqsa, Google Calendar → təqvimin ayarları →
 **Integrate calendar → Calendar ID** dəyərini köçürün.
+
+> Environment-dəki `GOOGLE_REFRESH_TOKEN` yalnız ehtiyat variantdır: baza boşdursa
+> ondan istifadə olunur. Adi halda bu dəyəri doldurmağa ehtiyac yoxdur.
 
 ## 9. Environment dəyişənləri
 
@@ -151,9 +187,10 @@ Ayrıca təqvim istifadə olunacaqsa, Google Calendar → təqvimin ayarları �
 | `OWNER_TELEGRAM_CHAT_ID` | Sahibkarın Telegram chat ID-si |
 | `GOOGLE_CLIENT_ID` | OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret |
-| `GOOGLE_REDIRECT_URI` | OAuth redirect ünvanı |
+| `GOOGLE_REDIRECT_URI` | İstifadə olunmur — redirect ünvanı `APP_BASE_URL`-dən qurulur |
 | `GOOGLE_CALENDAR_ID` | `primary` və ya konkret təqvim ID-si |
-| `GOOGLE_REFRESH_TOKEN` | 8-ci bölmədə alınan token |
+| `GOOGLE_REFRESH_TOKEN` | İstəyə bağlı — adətən boş qalır, token bazada saxlanılır (8-ci bölmə) |
+| `SETUP_SECRET` | Təqvim qoşulma linkini qoruyan açar (`openssl rand -hex 24`) |
 | `RESTAURANT_NAME` | Restoranın adı (səhifədə və mesajlarda görünür) |
 | `RESTAURANT_ADDRESS` | Ünvan (təqvim tədbirinin məkan sahəsində göstərilir) |
 | `TIMEZONE` | Default `Asia/Baku` |
@@ -189,9 +226,12 @@ Sonra Telegram-da öz botunuza `/start` yazın.
    npm run start
    ```
 4. `APP_BASE_URL`-i real HTTPS ünvanı ilə əvəz edin.
-5. `GOOGLE_REDIRECT_URI`-ni Google Console-da production ünvanı ilə yeniləyin.
+5. Google Console-da redirect URI-ni production ünvanı ilə yeniləyin:
+   `https://<domeniniz>/api/google/callback`.
 6. Webhook-u qoşun: `npm run bot:set-webhook`.
-7. `GET /api/health` ünvanının `{"status":"ok"}` qaytardığını yoxlayın.
+7. `SETUP_SECRET` təyin edin və təqvimi qoşma linki ilə bağlayın (8-ci bölmə).
+8. `GET /api/health` ünvanının `{"status":"ok"}` qaytardığını və
+   `calendar.connected` sahəsinin `true` olduğunu yoxlayın.
 
 > **Qeyd:** rate limiting yaddaşdaxilidir, yəni hər instans üçün ayrıca sayılır.
 > Bir neçə instans işlədəcəksinizsə, `src/lib/security/rate-limit.ts` faylını
@@ -231,6 +271,7 @@ Bütün server logları JSON sətirləridir və `scope` sahəsi ilə işarələn
 | `reservations.notify.customer` / `.owner` | Telegram mesajı göndərilmədi |
 | `reservations.cancel` | Rezervasiya ləğv edildi |
 | `telegram.webhook` | Doğrulanmamış webhook sorğusu rədd edildi |
+| `google.connect` / `google.callback` | Təqvim qoşulma cəhdləri və nəticəsi |
 | `health.database` | Baza bağlantısı yoxlanışı uğursuz oldu |
 
 Telefon nömrələri və adlar loglarda maskalanır (`+994*******67`, `E****`).
@@ -242,8 +283,9 @@ Tez-tez rast gəlinən hallar:
   sahəsinə baxın; `last_error_message` problemi göstərir.
 - **Boş saat görünmür** → iş qrafikini (`business_hours`), bağlı günləri
   (`closed_dates`) və Google Calendar-dakı mövcud tədbirləri yoxlayın.
-- **Rezervasiya 502 qaytarır** → Google credentials yanlış və ya token
-  köhnəlib; `npm run google:token` ilə yenisini alın.
+- **Rezervasiya 502 qaytarır** → təqvim bağlantısı yoxdur və ya token ləğv
+  olunub. `GET /api/health` cavabında `calendar.connected` sahəsinə baxın;
+  `false`-dursa sahibkar qoşulma linkini yenidən açmalıdır (8-ci bölmə).
 
 ---
 
@@ -256,6 +298,8 @@ Tez-tez rast gəlinən hallar:
 | `GET` | `/api/reservations/:code` | Rezervasiyanın açıq məlumatları |
 | `POST` | `/api/reservations/:code/cancel` | Rezervasiyanı ləğv edir (token tələb olunur) |
 | `POST` | `/api/telegram/webhook` | Telegram update-ləri (secret ilə doğrulanır) |
+| `GET` | `/api/google/connect?key=…` | Sahibkarı Google icazə səhifəsinə yönləndirir |
+| `GET` | `/api/google/callback` | Tokeni alıb bazaya yazır |
 | `GET` | `/api/health` | Sağlamlıq yoxlanışı |
 
 ## Testlər

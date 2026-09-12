@@ -67,6 +67,14 @@ model BusinessSettings {
   timezone                  String
   bookingDurationMinutes    Int      @map("booking_duration_minutes")
   cancellationDeadlineHours Int      @map("cancellation_deadline_hours")
+
+  /// Google Calendar bağlantısı — sahibkar brauzerdən qoşur, token burada yaşayır.
+  /// Env-dəki GOOGLE_REFRESH_TOKEN yalnız ehtiyat variantdır.
+  googleRefreshToken        String?   @map("google_refresh_token")
+  googleCalendarId          String?   @map("google_calendar_id")
+  googleConnectedAt         DateTime? @map("google_connected_at")
+  googleAccountEmail        String?   @map("google_account_email")
+
   createdAt                 DateTime @default(now()) @map("created_at")
   updatedAt                 DateTime @updatedAt @map("updated_at")
 

@@ -17,8 +17,7 @@
     "db:test:setup": "tsx scripts/setup-test-db.ts",
     "db:studio": "prisma studio",
     "bot:poll": "tsx scripts/bot-poll.ts",
-    "bot:set-webhook": "tsx scripts/set-webhook.ts",
-    "google:token": "tsx scripts/google-refresh-token.ts"
+    "bot:set-webhook": "tsx scripts/set-webhook.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

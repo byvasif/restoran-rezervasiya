@@ -15,14 +15,15 @@ function fromBase64Url(value: string): string {
   return Buffer.from(value, 'base64url').toString('utf8')
 }
 
-export function signChatLink(chatId: string, secret: string, ttlMs: number = DEFAULT_TTL_MS): string {
+/** İstənilən dəyəri müddət və imza ilə birləşdirib base64url token qaytarır. */
+export function signValue(value: string, secret: string, ttlMs: number = DEFAULT_TTL_MS): string {
   const expiresAt = Date.now() + ttlMs
-  const payload = `${chatId}.${expiresAt}`
+  const payload = `${value}.${expiresAt}`
   return toBase64Url(`${payload}.${hmacHex(payload, secret)}`)
 }
 
-/** Token etibarlıdırsa chat ID, əks halda `null` qaytarır. */
-export function verifyChatLink(token: string, secret: string, now: number = Date.now()): string | null {
+/** İmzalı tokeni açır; etibarsız və ya vaxtı keçmişdirsə `null`. */
+export function verifyValue(token: string, secret: string, now: number = Date.now()): string | null {
   if (!token) return null
 
   let decoded: string
@@ -35,13 +36,24 @@ export function verifyChatLink(token: string, secret: string, now: number = Date
   const parts = decoded.split('.')
   if (parts.length !== 3) return null
 
-  const [chatId, expiresAtRaw, signature] = parts
+  const [value, expiresAtRaw, signature] = parts
   const expiresAt = Number(expiresAtRaw)
   if (!Number.isFinite(expiresAt) || expiresAt < now) return null
-  if (!safeCompare(signature, hmacHex(`${chatId}.${expiresAtRaw}`, secret))) return null
-  if (!/^-?\d+$/.test(chatId)) return null
+  if (!safeCompare(signature, hmacHex(`${value}.${expiresAtRaw}`, secret))) return null
 
-  return chatId
+  return value
+}
+
+export function signChatLink(chatId: string, secret: string, ttlMs: number = DEFAULT_TTL_MS): string {
+  return signValue(chatId, secret, ttlMs)
+}
+
+/** Token etibarlıdırsa chat ID, əks halda `null` qaytarır. */
+export function verifyChatLink(token: string, secret: string, now: number = Date.now()): string | null {
+  const value = verifyValue(token, secret, now)
+  if (value === null) return null
+  // Chat ID həmişə rəqəmdir — başqa məqsədlə imzalanmış token bura keçməsin.
+  return /^-?\d+$/.test(value) ? value : null
 }
 
 /** Bot düyməsindəki rezervasiya linkini qurur. */

@@ -32,6 +32,9 @@ const envSchema = z.object({
 
   APP_BASE_URL: z.string().url(),
 
+  /// Google Calendar qoşulma linkini qorumaq üçün açar — yalnız sahibkar bilir.
+  SETUP_SECRET: z.string().default(''),
+
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(30),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 })
