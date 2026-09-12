@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
+import { POST as webhookPost } from '@/app/api/telegram/webhook/route'
+import { setTelegram } from '@/lib/telegram/client'
 import { processUpdate, handleUpdate, markUpdateProcessed, type TelegramUpdate } from '@/lib/telegram/handlers'
 import { verifyChatLink } from '@/lib/telegram/link'
 import { createReservation } from '@/lib/reservations/create'
@@ -119,19 +121,19 @@ describe('update dedupe', () => {
 })
 
 describe('webhook endpoint doğrulaması', () => {
-  async function post(secret: string | null, body: unknown) {
-    const { POST } = await import('@/app/api/telegram/webhook/route')
-    const { setTelegram } = await import('@/lib/telegram/client')
+  function post(secret: string | null, body: unknown) {
     setTelegram(telegram)
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (secret !== null) headers['x-telegram-bot-api-secret-token'] = secret
 
-    return POST(new Request('http://localhost:3200/api/telegram/webhook', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    }))
+    return webhookPost(
+      new Request('http://localhost:3200/api/telegram/webhook', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      }),
+    )
   }
 
   it('secret başlığı olmayan sorğunu 401 ilə rədd edir', async () => {
@@ -154,12 +156,13 @@ describe('webhook endpoint doğrulaması', () => {
   })
 
   it('oxunmayan gövdədə də Telegram-a 200 qaytarır', async () => {
-    const { POST } = await import('@/app/api/telegram/webhook/route')
-    const response = await POST(new Request('http://localhost:3200/api/telegram/webhook', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-telegram-bot-api-secret-token': SECRET },
-      body: 'bu JSON deyil',
-    }))
+    const response = await webhookPost(
+      new Request('http://localhost:3200/api/telegram/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-telegram-bot-api-secret-token': SECRET },
+        body: 'bu JSON deyil',
+      }),
+    )
     expect(response.status).toBe(200)
   })
 })
