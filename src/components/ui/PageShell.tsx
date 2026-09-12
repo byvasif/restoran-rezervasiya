@@ -17,7 +17,18 @@ export function PageShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-[560px] px-5 pb-16 pt-7">{children}</main>
+      <main className="mx-auto max-w-[560px] px-5 pt-7">{children}</main>
+
+      <footer className="mx-auto max-w-[560px] px-5 pb-12 pt-10">
+        <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-sand-dark pt-5 text-[14px] text-ink-soft">
+          <a className="underline underline-offset-4" href="/mexfilik">
+            Məxfilik siyasəti
+          </a>
+          <a className="underline underline-offset-4" href="/sertler">
+            İstifadə şərtləri
+          </a>
+        </div>
+      </footer>
     </div>
   )
 }
