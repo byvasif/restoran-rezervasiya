@@ -1,28 +1,69 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #fff7ed;
-  --color-brand-100: #ffedd5;
-  --color-brand-200: #fed7aa;
-  --color-brand-400: #fb923c;
-  --color-brand-500: #f97316;
-  --color-brand-600: #ea580c;
-  --color-brand-700: #c2410c;
-  --color-ink-500: #6b7280;
-  --color-ink-700: #374151;
-  --color-ink-900: #111827;
+  /* Nar (pomegranate) — restoranın imzası. */
+  --color-nar-900: #4A0A17;
+  --color-nar-700: #6E1023;
+  --color-nar-500: #A81D3A;
+  --color-nar-100: #F6E3E7;
+
+  --color-paper: #FFFDF9;
+  --color-sand: #F3EDE4;
+  --color-sand-dark: #E3D9CB;
+
+  --color-ink: #1C1A17;
+  --color-ink-soft: #6B635A;
+
+  --color-brass: #C8952F;
+
+  --font-display: var(--font-source-serif), Georgia, 'Times New Roman', serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-html, body {
+html {
   -webkit-text-size-adjust: 100%;
+  background-color: var(--color-nar-900);
 }
 
 body {
-  background-color: #f8fafc;
-  color: var(--color-ink-900);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
 }
 
-/* iOS Safari-də input fokusunda avtomatik zoom-un qarşısını alır. */
-input, select, textarea, button {
+/* iOS Safari-də fokusda avtomatik zoom-un qarşısını alır. */
+input,
+select,
+textarea,
+button {
   font-size: 16px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-nar-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes seal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82) rotate(-6deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-3deg);
+  }
+}
+
+.seal {
+  animation: seal-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }

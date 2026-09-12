@@ -2,6 +2,10 @@ import { google, type calendar_v3 } from 'googleapis'
 import { env } from '@/config/env'
 import { logWarn } from '@/lib/security/log'
 import type { BusyPeriod, CalendarEventInput, CalendarPort } from './calendar-port'
+import { withTimeout } from './with-timeout'
+
+/** Google cavab verməsə sorğu bu həddə dayanır. */
+const REQUEST_TIMEOUT_MS = 8000
 
 /**
  * Google Calendar API implementasiyası. OAuth 2.0 refresh token ilə işləyir —
@@ -20,14 +24,21 @@ export class GoogleCalendar implements CalendarPort {
   }
 
   async getBusy(from: Date, to: Date): Promise<BusyPeriod[]> {
-    const response = await this.calendar.freebusy.query({
-      requestBody: {
-        timeMin: from.toISOString(),
-        timeMax: to.toISOString(),
-        timeZone: env.TIMEZONE,
-        items: [{ id: env.GOOGLE_CALENDAR_ID }],
-      },
-    })
+    const response = await withTimeout(
+      this.calendar.freebusy.query(
+        {
+          requestBody: {
+            timeMin: from.toISOString(),
+            timeMax: to.toISOString(),
+            timeZone: env.TIMEZONE,
+            items: [{ id: env.GOOGLE_CALENDAR_ID }],
+          },
+        },
+        { timeout: REQUEST_TIMEOUT_MS },
+      ),
+      REQUEST_TIMEOUT_MS,
+      'Google Calendar freeBusy',
+    )
 
     const periods = response.data.calendars?.[env.GOOGLE_CALENDAR_ID]?.busy ?? []
     return periods
@@ -36,16 +47,23 @@ export class GoogleCalendar implements CalendarPort {
   }
 
   async createEvent(input: CalendarEventInput): Promise<string> {
-    const response = await this.calendar.events.insert({
-      calendarId: env.GOOGLE_CALENDAR_ID,
-      requestBody: {
-        summary: input.summary,
-        description: input.description,
-        location: input.location || undefined,
-        start: { dateTime: input.start.toISOString(), timeZone: input.timezone },
-        end: { dateTime: input.end.toISOString(), timeZone: input.timezone },
-      },
-    })
+    const response = await withTimeout(
+      this.calendar.events.insert(
+        {
+          calendarId: env.GOOGLE_CALENDAR_ID,
+          requestBody: {
+            summary: input.summary,
+            description: input.description,
+            location: input.location || undefined,
+            start: { dateTime: input.start.toISOString(), timeZone: input.timezone },
+            end: { dateTime: input.end.toISOString(), timeZone: input.timezone },
+          },
+        },
+        { timeout: REQUEST_TIMEOUT_MS },
+      ),
+      REQUEST_TIMEOUT_MS,
+      'Google Calendar events.insert',
+    )
 
     const eventId = response.data.id
     if (!eventId) throw new Error('Google Calendar tədbir ID-si qaytarmadı')
@@ -54,7 +72,11 @@ export class GoogleCalendar implements CalendarPort {
 
   async deleteEvent(eventId: string): Promise<void> {
     try {
-      await this.calendar.events.delete({ calendarId: env.GOOGLE_CALENDAR_ID, eventId })
+      await withTimeout(
+        this.calendar.events.delete({ calendarId: env.GOOGLE_CALENDAR_ID, eventId }, { timeout: REQUEST_TIMEOUT_MS }),
+        REQUEST_TIMEOUT_MS,
+        'Google Calendar events.delete',
+      )
     } catch (error) {
       const status = (error as { code?: number; status?: number }).code ?? (error as { status?: number }).status
       // Tədbir onsuz da yoxdursa bu xəta deyil — ləğv axını davam etməlidir.
