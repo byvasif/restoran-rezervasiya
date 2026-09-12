@@ -1,0 +1,17 @@
+{
+  "comment": "İş qrafiki. Bu fayl yalnız ilkin dəyərləri verir — `npm run db:seed` onları bazaya yazır. Sonradan qrafiki dəyişmək üçün faylı redaktə edib seed-i yenidən işlədin.",
+  "weekdays": [
+    { "weekday": 0, "name": "Bazar", "isOpen": false, "openingTime": null, "closingTime": null, "breakStart": null, "breakEnd": null },
+    { "weekday": 1, "name": "Bazar ertəsi", "isOpen": true, "openingTime": "10:00", "closingTime": "22:00", "breakStart": null, "breakEnd": null },
+    { "weekday": 2, "name": "Çərşənbə axşamı", "isOpen": true, "openingTime": "10:00", "closingTime": "22:00", "breakStart": null, "breakEnd": null },
+    { "weekday": 3, "name": "Çərşənbə", "isOpen": true, "openingTime": "10:00", "closingTime": "22:00", "breakStart": null, "breakEnd": null },
+    { "weekday": 4, "name": "Cümə axşamı", "isOpen": true, "openingTime": "10:00", "closingTime": "22:00", "breakStart": null, "breakEnd": null },
+    { "weekday": 5, "name": "Cümə", "isOpen": true, "openingTime": "10:00", "closingTime": "22:00", "breakStart": null, "breakEnd": null },
+    { "weekday": 6, "name": "Şənbə", "isOpen": true, "openingTime": "10:00", "closingTime": "22:00", "breakStart": null, "breakEnd": null }
+  ],
+  "closedDates": [
+    { "date": "2027-01-01", "reason": "Yeni il" },
+    { "date": "2027-03-20", "reason": "Novruz bayramı" },
+    { "date": "2027-03-21", "reason": "Novruz bayramı" }
+  ]
+}

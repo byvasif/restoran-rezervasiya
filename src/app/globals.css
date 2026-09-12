@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-ink-500: #6b7280;
+  --color-ink-700: #374151;
+  --color-ink-900: #111827;
+}
+
+html, body {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: #f8fafc;
+  color: var(--color-ink-900);
+}
+
+/* iOS Safari-də input fokusunda avtomatik zoom-un qarşısını alır. */
+input, select, textarea, button {
+  font-size: 16px;
+}

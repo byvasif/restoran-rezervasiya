@@ -1,0 +1,49 @@
+{
+  "name": "restoran-rezervasiya",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Azərbaycan dilində restoran rezervasiya sistemi — Telegram bot + Google Calendar",
+  "scripts": {
+    "dev": "next dev -p 3200",
+    "build": "next build",
+    "start": "next start -p 3200",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:watch": "vitest",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:test:setup": "tsx scripts/setup-test-db.ts",
+    "db:studio": "prisma studio",
+    "bot:poll": "tsx scripts/bot-poll.ts",
+    "bot:set-webhook": "tsx scripts/set-webhook.ts",
+    "google:token": "tsx scripts/google-refresh-token.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.3.0",
+    "googleapis": "^144.0.0",
+    "libphonenumber-js": "^1.11.17",
+    "luxon": "^3.5.0",
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "dotenv": "^16.4.7",
+    "prisma": "^6.3.0",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

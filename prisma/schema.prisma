@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  confirmed
+  cancelled
+  failed
+}
+
+model User {
+  id               String   @id @default(uuid())
+  telegramUserId   String?  @unique @map("telegram_user_id")
+  telegramChatId   String?  @map("telegram_chat_id")
+  telegramUsername String?  @map("telegram_username")
+  firstName        String?  @map("first_name")
+  lastName         String?  @map("last_name")
+  phoneNumber      String?  @map("phone_number")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  reservations Reservation[]
+
+  @@index([phoneNumber])
+  @@map("users")
+}
+
+model Reservation {
+  id                    String            @id @default(uuid())
+  reservationCode       String            @unique @map("reservation_code")
+  userId                String?           @map("user_id")
+  firstName             String            @map("first_name")
+  lastName              String            @map("last_name")
+  phoneNumber           String            @map("phone_number")
+  /// Konfiqurasiya olunmuş vaxt zonasında təqvim tarixi (divar saatı).
+  reservationDate       DateTime          @map("reservation_date") @db.Date
+  /// "HH:mm" formasında, həmin zonanın divar saatı.
+  startTime             String            @map("start_time") @db.VarChar(5)
+  endTime               String            @map("end_time") @db.VarChar(5)
+  timezone              String
+  status                ReservationStatus @default(confirmed)
+  telegramChatId        String?           @map("telegram_chat_id")
+  telegramUsername      String?           @map("telegram_username")
+  googleCalendarEventId String?           @map("google_calendar_event_id")
+  cancellationToken     String            @unique @map("cancellation_token")
+  idempotencyKey        String?           @unique @map("idempotency_key")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  cancelledAt           DateTime?         @map("cancelled_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([reservationDate, status])
+  @@index([telegramChatId])
+  @@map("reservations")
+}
+
+model BusinessSettings {
+  id                        String   @id @default(uuid())
+  restaurantName            String   @map("restaurant_name")
+  restaurantAddress         String   @map("restaurant_address")
+  timezone                  String
+  bookingDurationMinutes    Int      @map("booking_duration_minutes")
+  cancellationDeadlineHours Int      @map("cancellation_deadline_hours")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("business_settings")
+}
+
+model BusinessHours {
+  id          String  @id @default(uuid())
+  /// 0 = Bazar, 1 = Bazar ertəsi ... 6 = Şənbə
+  weekday     Int     @unique
+  isOpen      Boolean @default(true) @map("is_open")
+  openingTime String? @map("opening_time") @db.VarChar(5)
+  closingTime String? @map("closing_time") @db.VarChar(5)
+  breakStart  String? @map("break_start") @db.VarChar(5)
+  breakEnd    String? @map("break_end") @db.VarChar(5)
+
+  @@map("business_hours")
+}
+
+model ClosedDate {
+  id         String   @id @default(uuid())
+  closedDate DateTime @unique @map("closed_date") @db.Date
+  reason     String?
+
+  @@map("closed_dates")
+}
+
+/// Telegram-ın təkrar göndərdiyi update-lərin ikiqat emalının qarşısını alır.
+model TelegramUpdate {
+  updateId    BigInt   @id @map("update_id")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("telegram_updates")
+}
