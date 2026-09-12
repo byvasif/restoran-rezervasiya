@@ -9,9 +9,12 @@ export class FakeCalendar implements CalendarPort {
   failOnCreate = false
   failOnBusy = false
   failOnDelete = false
+  /** Sorğunu süni gecikdirir — həqiqi race condition ssenarisini qurmaq üçün. */
+  busyDelayMs = 0
   private counter = 0
 
   async getBusy(): Promise<BusyPeriod[]> {
+    if (this.busyDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.busyDelayMs))
     if (this.failOnBusy) throw new Error('Google Calendar əlçatmazdır (test)')
     return this.busy
   }
