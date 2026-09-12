@@ -8,6 +8,32 @@ sahibkar üçün nəzərdə tutulub.
 müştəri mobil səhifədə tarix və saat seçir → rezervasiya sahibkarın Google
 Calendar-ına düşür → həm müştəriyə, həm sahibkara Telegram bildirişi gedir.
 
+<p>
+  <img src="docs/screenshots/rezervasiya-sehifesi.png" width="260" alt="Rezervasiya səhifəsi" />
+  <img src="docs/screenshots/ugurlu-rezervasiya.png" width="260" alt="Təsdiq səhifəsi" />
+  <img src="docs/screenshots/legv-sehifesi.png" width="260" alt="Ləğv səhifəsi" />
+</p>
+
+## Diqqətəlayiq həllər
+
+- **Eyni vaxta iki rezervasiya mümkün deyil.** Qarşısı tətbiq kodunda deyil,
+  Postgres-in partial unique indeksi ilə alınır:
+  `UNIQUE (reservation_date, start_time) WHERE status = 'confirmed'`. Paralel iki
+  sorğudan yalnız biri keçir, ikincisi baza səviyyəsində rədd edilir.
+- **Təqvim tədbiri yaradıla bilməsə rezervasiya `failed` olur** və slot dərhal
+  yenidən boş görünür — müştəri "uğurlu" mesajı alıb boşluqda qalmır.
+- **Google Calendar bağlantısı brauzerdən qurulur.** Refresh token environment-də
+  deyil, bazada saxlanılır; sahibkar qoşulma linkini açıb icazə verir. Token
+  ölərsə yenidən qoşulmaq üçün nə terminal, nə deploy lazımdır.
+- **Vaxt zonası divar saatı kimi saxlanılır** (Asia/Baku), UTC anı yalnız Google
+  sorğusu üçün hesablanır — yay vaxtı keçidlərində sürüşmə olmur.
+- **Şəxsi məlumatlar loglarda maskalanır**, ləğv linki 32 baytlıq təsadüfi
+  tokendir, Telegram webhook-u secret ilə doğrulanır.
+
+**140 test** (unit + inteqrasiya) bu davranışların hamısını yoxlayır. Google
+Calendar və Telegram testlərdə port interfeysləri ilə əvəz olunur — heç bir real
+API sorğusu getmir.
+
 ## Texnologiyalar
 
 | Sahə | Seçim |
