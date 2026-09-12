@@ -145,5 +145,10 @@ export async function processUpdate(update: TelegramUpdate, deps: HandlerDeps): 
     await handleUpdate(update, deps)
   } catch (error) {
     logError('telegram.handleUpdate', error, { updateId: update.update_id })
+    // Emal uğursuz oldu — dedupe işarəsini geri götürürük, əks halda Telegram
+    // həmin update-i təkrar göndərsə də mesaj həmişəlik itmiş qalar.
+    await prisma.telegramUpdate
+      .delete({ where: { updateId: BigInt(update.update_id) } })
+      .catch(() => undefined)
   }
 }

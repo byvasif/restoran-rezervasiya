@@ -5,7 +5,7 @@
   "description": "Azərbaycan dilində restoran rezervasiya sistemi — Telegram bot + Google Calendar",
   "scripts": {
     "dev": "next dev -p 3200",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

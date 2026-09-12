@@ -20,6 +20,22 @@ interface BookingFlowProps {
 
 const EMPTY_GUEST: GuestDetails = { firstName: '', lastName: '', phoneNumber: '' }
 
+/** Server cavabı JSON olmasa (proxy xəta səhifəsi və s.) axını dağıtmır. */
+async function readJson(response: Response): Promise<Record<string, unknown>> {
+  try {
+    return (await response.json()) as Record<string, unknown>
+  } catch {
+    return {}
+  }
+}
+
+/** Sorğu bu müddətdən çox çəkərsə istifadəçi sonsuz gözləmir. */
+const REQUEST_TIMEOUT_MS = 30_000
+
+function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
+  return fetch(input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
+}
+
 function addMinutesToTime(time: string, minutes: number): string {
   const [hours, mins] = time.split(':').map(Number)
   const total = hours * 60 + mins + minutes
@@ -46,18 +62,18 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
     setLoadingSlots(true)
     setClosedReason(null)
     try {
-      const response = await fetch(`/api/availability?date=${selectedDate}`)
-      const data = await response.json()
+      const response = await fetchWithTimeout(`/api/availability?date=${selectedDate}`)
+      const data = await readJson(response)
 
       if (!response.ok) {
         setSlots([])
-        setMessage({ tone: 'error', text: data.error ?? 'Saatları yükləmək mümkün olmadı.' })
+        setMessage({ tone: 'error', text: (data.error as string) ?? 'Saatları yükləmək mümkün olmadı.' })
         return
       }
 
-      setSlots(data.slots)
-      setDurationMinutes(data.durationMinutes ?? 60)
-      if (data.closed) setClosedReason(data.reason ?? 'Bu tarixdə restoran bağlıdır.')
+      setSlots((data.slots as string[]) ?? [])
+      setDurationMinutes((data.durationMinutes as number) ?? 60)
+      if (data.closed) setClosedReason((data.reason as string) ?? 'Bu tarixdə restoran bağlıdır.')
       setMessage(null)
     } catch {
       setSlots([])
@@ -98,7 +114,7 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
     setMessage(null)
 
     try {
-      const response = await fetch('/api/reservations', {
+      const response = await fetchWithTimeout('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -110,20 +126,20 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
         }),
       })
 
-      const data = await response.json()
+      const data = await readJson(response)
 
       if (response.status === 201) {
         try {
-          sessionStorage.setItem(`rezervasiya:${data.reservationCode}`, data.cancelUrl)
+          sessionStorage.setItem(`rezervasiya:${data.reservationCode}`, data.cancelUrl as string)
         } catch {
           // sessionStorage əlçatmazdırsa ləğv linki yalnız Telegram mesajında qalır.
         }
-        router.push(`/ugurlu/${data.reservationCode}`)
+        router.push(`/ugurlu/${data.reservationCode as string}`)
         return
       }
 
       if (response.status === 409) {
-        setMessage({ tone: 'warning', text: data.error })
+        setMessage({ tone: 'warning', text: data.error as string })
         setTime(null)
         setStep(1)
         if (date) void loadSlots(date)
@@ -131,18 +147,30 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
       }
 
       if (response.status === 400 && data.fields) {
+        const fields = data.fields as Record<string, string>
         setFieldErrors({
-          firstName: data.fields.firstName,
-          lastName: data.fields.lastName,
-          phoneNumber: data.fields.phoneNumber,
+          firstName: fields.firstName,
+          lastName: fields.lastName,
+          phoneNumber: fields.phoneNumber,
         })
         setStep(2)
         return
       }
 
-      setMessage({ tone: 'error', text: data.error ?? 'Rezervasiyanı tamamlamaq mümkün olmadı.' })
-    } catch {
-      setMessage({ tone: 'error', text: 'Bağlantı alınmadı. Bir az sonra yenidən cəhd edin.' })
+      setMessage({
+        tone: 'error',
+        text:
+          (data.error as string) ??
+          'Rezervasiyanı tamamlamaq mümkün olmadı. Zəhmət olmasa bir az sonra yenidən cəhd edin.',
+      })
+    } catch (error) {
+      const timedOut = error instanceof DOMException && error.name === 'TimeoutError'
+      setMessage({
+        tone: 'error',
+        text: timedOut
+          ? 'Server vaxtında cavab vermədi. Rezervasiya yaradılmayıb — bir az sonra yenidən cəhd edin.'
+          : 'Bağlantı alınmadı. İnternet bağlantınızı yoxlayıb yenidən cəhd edin.',
+      })
     } finally {
       setSubmitting(false)
     }

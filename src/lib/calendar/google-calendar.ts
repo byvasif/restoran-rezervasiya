@@ -1,5 +1,5 @@
 import { google, type calendar_v3 } from 'googleapis'
-import { env } from '@/config/env'
+import { env, isCalendarConfigured, missingCalendarKeys } from '@/config/env'
 import { logWarn } from '@/lib/security/log'
 import type { BusyPeriod, CalendarEventInput, CalendarPort } from './calendar-port'
 import { withTimeout } from './with-timeout'
@@ -15,6 +15,11 @@ export class GoogleCalendar implements CalendarPort {
   private client: calendar_v3.Calendar | null = null
 
   private get calendar(): calendar_v3.Calendar {
+    if (!isCalendarConfigured()) {
+      throw new Error(
+        `Google Calendar konfiqurasiyası tamamlanmayıb — .env faylında bu dəyərlər boşdur: ${missingCalendarKeys().join(', ')}`,
+      )
+    }
     if (!this.client) {
       const auth = new google.auth.OAuth2(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, env.GOOGLE_REDIRECT_URI)
       auth.setCredentials({ refresh_token: env.GOOGLE_REFRESH_TOKEN })

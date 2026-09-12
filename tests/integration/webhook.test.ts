@@ -118,6 +118,19 @@ describe('update dedupe', () => {
     telegram.failOnSend = true
     await expect(processUpdate(update('/start'), { telegram })).resolves.toBeUndefined()
   })
+
+  it('uğursuz emaldan sonra eyni update yenidən cəhd edilə bilir', async () => {
+    const payload = update('/start', 515151)
+
+    telegram.failOnSend = true
+    await processUpdate(payload, { telegram })
+    expect(telegram.sent).toHaveLength(0)
+    expect(await prisma.telegramUpdate.findUnique({ where: { updateId: BigInt(515151) } })).toBeNull()
+
+    telegram.failOnSend = false
+    await processUpdate(payload, { telegram })
+    expect(telegram.sent).toHaveLength(1)
+  })
 })
 
 describe('webhook endpoint doğrulaması', () => {

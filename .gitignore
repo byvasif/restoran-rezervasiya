@@ -11,3 +11,5 @@ next-env.d.ts
 coverage/
 .env.test
 node_modules.nosync/
+.vercel
+.env*
