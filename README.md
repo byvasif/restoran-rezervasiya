@@ -1,8 +1,8 @@
 # Restoran Rezervasiya Sistemi
 
-Azərbaycan dilində işləyən masa rezervasiya sistemi: Telegram botu, mobil
-rezervasiya səhifəsi və Google Calendar inteqrasiyası. Bir restoran və bir
-sahibkar üçün nəzərdə tutulub.
+Üç dildə (**Azərbaycanca, Türkcə, İngiliscə**) işləyən masa rezervasiya sistemi:
+Telegram botu, mobil rezervasiya səhifəsi və Google Calendar inteqrasiyası.
+Bir restoran və bir sahibkar üçün nəzərdə tutulub.
 
 **Necə işləyir:** müştəri bota `/start` yazır → bot rezervasiya linki göndərir →
 müştəri mobil səhifədə tarix və saat seçir → rezervasiya sahibkarın Google
@@ -13,6 +13,20 @@ Calendar-ına düşür → həm müştəriyə, həm sahibkara Telegram bildiriş
   <img src="docs/screenshots/ugurlu-rezervasiya.png" width="260" alt="Təsdiq səhifəsi" />
   <img src="docs/screenshots/legv-sehifesi.png" width="260" alt="Ləğv səhifəsi" />
 </p>
+
+## Dillər
+
+Müştəri interfeysi `/az`, `/tr`, `/en` ünvanlarında açılır. İlk girişdə brauzerin
+`Accept-Language` başlığına görə avtomatik yönləndirmə olur, başlıqdakı
+dəyişdirici ilə dil əl ilə seçilir və seçim kukidə saxlanılır. Telegram botu
+istifadəçinin hesab dilinə uyğun cavab verir, `/dil` komandası ilə dəyişdirilir.
+
+Sahibkara gedən bildirişlər və Google Calendar tədbirləri **həmişə
+Azərbaycancadır** — restoran işçisi hər rezervasiyanı eyni formatda oxuyur.
+
+Tərcümələr `src/i18n/dictionaries/` altındadır. Azərbaycanca lüğət tip
+mənbəyidir: `tr` və ya `en` faylında açar əskik olsa layihə kompilyasiya
+olunmur, yəni tərcüməsiz mətn production-a çıxa bilmir.
 
 ## Diqqətəlayiq həllər
 
@@ -29,6 +43,8 @@ Calendar-ına düşür → həm müştəriyə, həm sahibkara Telegram bildiriş
   sorğusu üçün hesablanır — yay vaxtı keçidlərində sürüşmə olmur.
 - **Şəxsi məlumatlar loglarda maskalanır**, ləğv linki 32 baytlıq təsadüfi
   tokendir, Telegram webhook-u secret ilə doğrulanır.
+- **Telefon doğrulaması dilə bağlıdır**: türkcə səhifədə yazılan `0555…` nömrəsi
+  TR nömrəsi kimi oxunur, beynəlxalq format hər dildə işləyir.
 
 **140 test** (unit + inteqrasiya) bu davranışların hamısını yoxlayır. Google
 Calendar və Telegram testlərdə port interfeysləri ilə əvəz olunur — heç bir real
@@ -319,7 +335,7 @@ Tez-tez rast gəlinən hallar:
 
 | Metod | Ünvan | Təyinat |
 |-------|-------|---------|
-| `GET` | `/api/availability?date=YYYY-MM-DD` | Seçilmiş tarix üçün boş saatlar |
+| `GET` | `/api/availability?date=YYYY-MM-DD&lang=az` | Seçilmiş tarix üçün boş saatlar |
 | `POST` | `/api/reservations` | Yeni rezervasiya yaradır |
 | `GET` | `/api/reservations/:code` | Rezervasiyanın açıq məlumatları |
 | `POST` | `/api/reservations/:code/cancel` | Rezervasiyanı ləğv edir (token tələb olunur) |
@@ -357,7 +373,8 @@ src/
     reservations/ availability, yaratma, ləğv, kod və token generasiyası
     validation/   telefon normalizasiyası, zod sxemləri
     security/     rate limiting, PII maskalanan loglar
-  app/            səhifələr və API route-ları
+  i18n/           lüğətlər, dil aşkarlanması, tarix formatları, hüquqi mətnlər
+  app/            [locale] altında səhifələr, prefiksiz API route-ları
   components/     mobil-first UI
 prisma/           sxem, miqrasiyalar, seed
 scripts/          bot polling, webhook quraşdırma, Google token

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { normalizePhone, formatPhoneForDisplay } from '@/lib/validation/phone'
-import { createReservationSchema } from '@/lib/validation/schemas'
+import { buildCreateReservationSchema } from '@/lib/validation/schemas'
 import { maskPhone, maskName } from '@/lib/security/log'
 
 describe('normalizePhone', () => {
@@ -32,6 +32,8 @@ describe('normalizePhone', () => {
     expect(formatPhoneForDisplay('+994501234567')).toBe('+994 50 123 45 67')
   })
 })
+
+const createReservationSchema = buildCreateReservationSchema('az')
 
 describe('createReservationSchema', () => {
   const valid = {

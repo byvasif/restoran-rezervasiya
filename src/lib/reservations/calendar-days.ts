@@ -2,7 +2,8 @@ import { DateTime } from 'luxon'
 import { getDayHours, getSettings } from '@/config/business'
 import { prisma } from '@/lib/db/prisma'
 import { dateStringToDbDate } from '@/lib/time/timezone'
-import { MONTHS_AZ, weekdayNameAz } from '@/lib/time/format-az'
+import { monthShortName, weekdayName, weekdayShortName } from '@/i18n/format-date'
+import { DEFAULT_LOCALE, type Locale } from '@/i18n/locales'
 
 export interface BookingDay {
   date: string
@@ -16,14 +17,15 @@ export interface BookingDay {
   reason?: string
 }
 
-const SHORT_WEEKDAYS = ['B.', 'B.e', 'Ç.a', 'Ç.', 'C.a', 'C.', 'Ş.']
-
 /**
  * Rezervasiya səhifəsindəki tarix lentini qurur: bugündən başlayaraq `days`
  * gün. Bağlı günlər siyahıda qalır, amma seçilə bilmir — müştəri restoranın
  * qrafikini dərhal görür.
  */
-export async function getBookingDays(days = 21): Promise<{ timezone: string; days: BookingDay[] }> {
+export async function getBookingDays(
+  days = 21,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<{ timezone: string; days: BookingDay[] }> {
   const settings = await getSettings()
   const start = DateTime.now().setZone(settings.timezone).startOf('day')
 
@@ -52,10 +54,10 @@ export async function getBookingDays(days = 21): Promise<{ timezone: string; day
     result.push({
       date,
       dayNumber: day.toFormat('d'),
-      weekdayShort: SHORT_WEEKDAYS[weekday],
-      monthShort: MONTHS_AZ[day.month - 1].slice(0, 3),
+      weekdayShort: weekdayShortName(weekday, locale),
+      monthShort: monthShortName(day.month, locale),
       isOpen: Boolean(hours?.isOpen) && !closedReason,
-      reason: closedReason ?? (hours?.isOpen ? undefined : `${weekdayNameAz(weekday)} günü bağlıdır`),
+      reason: closedReason ?? (hours?.isOpen ? undefined : weekdayName(weekday, locale)),
     })
   }
 

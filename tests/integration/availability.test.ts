@@ -34,13 +34,15 @@ describe('getAvailability', () => {
     expect(result.durationMinutes).toBe(60)
   })
 
-  it('bağlı həftə günü üçün boş siyahı və səbəb qaytarır', async () => {
+  it('bağlı həftə günü üçün boş siyahı və kod qaytarır', async () => {
     const result = await getAvailability(SUNDAY, { calendar })
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.closed).toBe(true)
     expect(result.slots).toEqual([])
-    expect(result.reason).toContain('işləmir')
+    // Mətn API qatında tərcümə olunur, domen yalnız səbəbin növünü bildirir.
+    expect(result.closedCode).toBe('WEEKDAY')
+    expect(result.reason).toBeUndefined()
   })
 
   it('xüsusi bağlı gündə səbəbi göstərir', async () => {
@@ -52,6 +54,8 @@ describe('getAvailability', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.closed).toBe(true)
+    expect(result.closedCode).toBe('DATE')
+    // Sahibkarın yazdığı sərbəst səbəb tərcümə edilmir, olduğu kimi qalır.
     expect(result.reason).toBe('Texniki fasilə')
   })
 

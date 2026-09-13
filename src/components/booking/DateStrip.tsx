@@ -1,17 +1,19 @@
 'use client'
 
 import type { BookingDay } from '@/lib/reservations/calendar-days'
+import type { Dictionary } from '@/i18n'
 
 interface DateStripProps {
   days: BookingDay[]
   selected: string | null
   onSelect: (date: string) => void
+  dictionary: Dictionary
 }
 
-export function DateStrip({ days, selected, onSelect }: DateStripProps) {
+export function DateStrip({ days, selected, onSelect, dictionary }: DateStripProps) {
   return (
     <div className="-mx-5 overflow-x-auto px-5 pb-2">
-      <ul className="flex gap-2" role="listbox" aria-label="Tarix seçimi">
+      <ul className="flex gap-2" role="listbox" aria-label={dictionary.booking.dateAriaLabel}>
         {days.map((day) => {
           const isSelected = day.date === selected
           return (
@@ -33,7 +35,9 @@ export function DateStrip({ days, selected, onSelect }: DateStripProps) {
               >
                 <span className="text-[12px] uppercase tracking-wide opacity-80">{day.weekdayShort}</span>
                 <span className="font-display text-[24px] leading-tight">{day.dayNumber}</span>
-                <span className="text-[11px] opacity-70">{day.isOpen ? day.monthShort : 'bağlı'}</span>
+                <span className="text-[11px] opacity-70">
+                  {day.isOpen ? day.monthShort : dictionary.booking.closedShort}
+                </span>
               </button>
             </li>
           )

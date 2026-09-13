@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import type { BookingDay } from '@/lib/reservations/calendar-days'
 import { Button } from '@/components/ui/Button'
 import { Notice } from '@/components/ui/Notice'
-import { formatDateAz } from '@/lib/time/format-az'
+import { fill, type Dictionary, type Locale } from '@/i18n'
+import { formatDateLong } from '@/i18n/format-date'
 import { DateStrip } from './DateStrip'
 import { GuestForm, type GuestDetails } from './GuestForm'
 import { ReviewCard } from './ReviewCard'
@@ -13,6 +14,8 @@ import { StepRail, type StepIndex } from './StepRail'
 import { TimeGrid } from './TimeGrid'
 
 interface BookingFlowProps {
+  locale: Locale
+  dictionary: Dictionary
   restaurantName: string
   days: BookingDay[]
   telegramToken?: string
@@ -42,8 +45,9 @@ function addMinutesToTime(time: string, minutes: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlowProps) {
+export function BookingFlow({ locale, dictionary, restaurantName, days, telegramToken }: BookingFlowProps) {
   const router = useRouter()
+  const texts = dictionary.booking
 
   const [step, setStep] = useState<StepIndex>(0)
   const [date, setDate] = useState<string | null>(null)
@@ -58,30 +62,33 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ tone: 'error' | 'warning'; text: string } | null>(null)
 
-  const loadSlots = useCallback(async (selectedDate: string) => {
-    setLoadingSlots(true)
-    setClosedReason(null)
-    try {
-      const response = await fetchWithTimeout(`/api/availability?date=${selectedDate}`)
-      const data = await readJson(response)
+  const loadSlots = useCallback(
+    async (selectedDate: string) => {
+      setLoadingSlots(true)
+      setClosedReason(null)
+      try {
+        const response = await fetchWithTimeout(`/api/availability?date=${selectedDate}&lang=${locale}`)
+        const data = await readJson(response)
 
-      if (!response.ok) {
+        if (!response.ok) {
+          setSlots([])
+          setMessage({ tone: 'error', text: (data.error as string) ?? texts.errorLoad })
+          return
+        }
+
+        setSlots((data.slots as string[]) ?? [])
+        setDurationMinutes((data.durationMinutes as number) ?? 60)
+        if (data.closed) setClosedReason((data.reason as string) ?? texts.noSlots)
+        setMessage(null)
+      } catch {
         setSlots([])
-        setMessage({ tone: 'error', text: (data.error as string) ?? 'Saatları yükləmək mümkün olmadı.' })
-        return
+        setMessage({ tone: 'error', text: texts.errorNetwork })
+      } finally {
+        setLoadingSlots(false)
       }
-
-      setSlots((data.slots as string[]) ?? [])
-      setDurationMinutes((data.durationMinutes as number) ?? 60)
-      if (data.closed) setClosedReason((data.reason as string) ?? 'Bu tarixdə restoran bağlıdır.')
-      setMessage(null)
-    } catch {
-      setSlots([])
-      setMessage({ tone: 'error', text: 'Bağlantı alınmadı. İnternet bağlantınızı yoxlayıb yenidən cəhd edin.' })
-    } finally {
-      setLoadingSlots(false)
-    }
-  }, [])
+    },
+    [locale, texts],
+  )
 
   useEffect(() => {
     if (date) void loadSlots(date)
@@ -100,9 +107,9 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
 
   function validateGuest(): boolean {
     const errors: Partial<Record<keyof GuestDetails, string>> = {}
-    if (guest.firstName.trim().length < 2) errors.firstName = 'Adınızı yazın.'
-    if (guest.lastName.trim().length < 2) errors.lastName = 'Soyadınızı yazın.'
-    if (guest.phoneNumber.replace(/\D/g, '').length < 9) errors.phoneNumber = 'Telefon nömrəsini tam yazın.'
+    if (guest.firstName.trim().length < 2) errors.firstName = texts.errorFirstName
+    if (guest.lastName.trim().length < 2) errors.lastName = texts.errorLastName
+    if (guest.phoneNumber.replace(/\D/g, '').length < 9) errors.phoneNumber = texts.errorPhone
 
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
@@ -121,6 +128,7 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
           ...guest,
           date,
           time,
+          locale,
           telegramToken,
           idempotencyKey: crypto.randomUUID(),
         }),
@@ -134,7 +142,7 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
         } catch {
           // sessionStorage əlçatmazdırsa ləğv linki yalnız Telegram mesajında qalır.
         }
-        router.push(`/ugurlu/${data.reservationCode as string}`)
+        router.push(`/${locale}/ugurlu/${data.reservationCode as string}`)
         return
       }
 
@@ -157,20 +165,10 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
         return
       }
 
-      setMessage({
-        tone: 'error',
-        text:
-          (data.error as string) ??
-          'Rezervasiyanı tamamlamaq mümkün olmadı. Zəhmət olmasa bir az sonra yenidən cəhd edin.',
-      })
+      setMessage({ tone: 'error', text: (data.error as string) ?? texts.errorGeneric })
     } catch (error) {
       const timedOut = error instanceof DOMException && error.name === 'TimeoutError'
-      setMessage({
-        tone: 'error',
-        text: timedOut
-          ? 'Server vaxtında cavab vermədi. Rezervasiya yaradılmayıb — bir az sonra yenidən cəhd edin.'
-          : 'Bağlantı alınmadı. İnternet bağlantınızı yoxlayıb yenidən cəhd edin.',
-      })
+      setMessage({ tone: 'error', text: timedOut ? texts.errorTimeout : texts.errorNetwork })
     } finally {
       setSubmitting(false)
     }
@@ -178,7 +176,7 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
 
   return (
     <div>
-      <StepRail current={step} />
+      <StepRail current={step} dictionary={dictionary} />
 
       {message ? (
         <div className="mb-5">
@@ -188,30 +186,30 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
 
       {step === 0 ? (
         <section>
-          <h2 className="font-display text-[22px] text-ink">Hansı gün gəlirsiniz?</h2>
-          <p className="mt-1 mb-4 text-[15px] text-ink-soft">Bağlı günlər seçilə bilmir.</p>
-          <DateStrip days={days} selected={date} onSelect={selectDate} />
+          <h2 className="font-display text-[22px] text-ink">{texts.dateHeading}</h2>
+          <p className="mt-1 mb-4 text-[15px] text-ink-soft">{texts.dateHint}</p>
+          <DateStrip days={days} selected={date} onSelect={selectDate} dictionary={dictionary} />
         </section>
       ) : null}
 
       {step === 1 ? (
         <section>
-          <h2 className="font-display text-[22px] text-ink">Saatı seçin</h2>
-          <p className="mt-1 mb-4 text-[15px] text-ink-soft">{date ? formatDateAz(date) : ''}</p>
+          <h2 className="font-display text-[22px] text-ink">{texts.timeHeading}</h2>
+          <p className="mt-1 mb-4 text-[15px] text-ink-soft">{date ? formatDateLong(date, locale) : ''}</p>
 
           {loadingSlots ? (
-            <p className="text-[15px] text-ink-soft">Boş saatlar yüklənir…</p>
+            <p className="text-[15px] text-ink-soft">{texts.loadingSlots}</p>
           ) : closedReason ? (
             <Notice tone="warning">{closedReason}</Notice>
           ) : slots.length === 0 ? (
-            <Notice tone="warning">Bu gün üçün boş saat qalmayıb. Başqa gün seçin.</Notice>
+            <Notice tone="warning">{texts.noSlots}</Notice>
           ) : (
-            <TimeGrid slots={slots} selected={time} onSelect={selectTime} />
+            <TimeGrid slots={slots} selected={time} onSelect={selectTime} dictionary={dictionary} />
           )}
 
           <div className="mt-6">
             <Button variant="quiet" onClick={() => setStep(0)}>
-              Tarixi dəyiş
+              {texts.changeDate}
             </Button>
           </div>
         </section>
@@ -219,12 +217,12 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
 
       {step === 2 ? (
         <section>
-          <h2 className="font-display text-[22px] text-ink">Sizi necə tanıyaq?</h2>
+          <h2 className="font-display text-[22px] text-ink">{texts.guestHeading}</h2>
           <p className="mt-1 mb-4 text-[15px] text-ink-soft">
-            {date ? formatDateAz(date) : ''}, saat {time}
+            {fill(texts.guestSubtitle, { date: date ? formatDateLong(date, locale) : '', time: time ?? '' })}
           </p>
 
-          <GuestForm value={guest} errors={fieldErrors} onChange={setGuest} />
+          <GuestForm value={guest} errors={fieldErrors} onChange={setGuest} dictionary={dictionary} />
 
           <div className="mt-6 space-y-3">
             <Button
@@ -233,10 +231,10 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
                 if (validateGuest()) setStep(3)
               }}
             >
-              Davam et
+              {texts.continue}
             </Button>
             <Button variant="quiet" onClick={() => setStep(1)}>
-              Saatı dəyiş
+              {texts.changeTime}
             </Button>
           </div>
         </section>
@@ -244,8 +242,8 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
 
       {step === 3 && date && time ? (
         <section>
-          <h2 className="font-display text-[22px] text-ink">Məlumatları yoxlayın</h2>
-          <p className="mt-1 mb-4 text-[15px] text-ink-soft">Təsdiqdən sonra rezervasiya kodunuz göstəriləcək.</p>
+          <h2 className="font-display text-[22px] text-ink">{texts.reviewHeading}</h2>
+          <p className="mt-1 mb-4 text-[15px] text-ink-soft">{texts.reviewSubtitle}</p>
 
           <ReviewCard
             restaurantName={restaurantName}
@@ -255,14 +253,16 @@ export function BookingFlow({ restaurantName, days, telegramToken }: BookingFlow
             date={date}
             time={time}
             endTime={addMinutesToTime(time, durationMinutes)}
+            locale={locale}
+            dictionary={dictionary}
           />
 
           <div className="mt-6 space-y-3">
             <Button full onClick={confirm} disabled={submitting}>
-              {submitting ? 'Təsdiqlənir…' : 'Rezervasiyanı təsdiqlə'}
+              {submitting ? texts.confirming : texts.confirm}
             </Button>
             <Button variant="quiet" onClick={() => setStep(2)} disabled={submitting}>
-              Məlumatları düzəlt
+              {texts.editDetails}
             </Button>
           </div>
         </section>

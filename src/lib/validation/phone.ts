@@ -5,7 +5,7 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js'
  * Yanlış nömrə üçün `null` qaytarır — çağıran tərəf bunu istifadəçiyə
  * anlaşılan mesajla bildirir.
  */
-export function normalizePhone(raw: string, defaultCountry: 'AZ' = 'AZ'): string | null {
+export function normalizePhone(raw: string, defaultCountry: 'AZ' | 'TR' = 'AZ'): string | null {
   if (typeof raw !== 'string') return null
   const trimmed = raw.trim()
   if (trimmed.length === 0) return null

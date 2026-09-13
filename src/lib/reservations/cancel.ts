@@ -4,7 +4,8 @@ import { env } from '@/config/env'
 import type { CalendarPort } from '@/lib/calendar/calendar-port'
 import { prisma } from '@/lib/db/prisma'
 import { logError, logInfo } from '@/lib/security/log'
-import { messages } from '@/lib/telegram/messages.az'
+import { getCustomerMessages, ownerMessages } from '@/lib/telegram/messages'
+import { toLocale } from '@/i18n/locales'
 import type { TelegramPort } from '@/lib/telegram/telegram-port'
 import { safeCompare } from '@/lib/telegram/verify'
 import { dbDateToDateString, toUtcInstant } from '@/lib/time/timezone'
@@ -89,14 +90,16 @@ export async function cancelReservation(code: string, token: string, deps: Reser
 
   if (cancelled.telegramChatId) {
     try {
-      await deps.telegram.sendMessage(cancelled.telegramChatId, messages.customerCancelled(data))
+      // Müştəri rezervasiyanı hansı dildə yaradıbsa, ləğv mesajı da o dildə gedir.
+      const customer = getCustomerMessages(toLocale(cancelled.locale))
+      await deps.telegram.sendMessage(cancelled.telegramChatId, customer.cancelled(data))
     } catch (error) {
       logError('reservations.cancel.notify.customer', error, { reservationCode: cancelled.reservationCode })
     }
   }
 
   try {
-    await deps.telegram.sendMessage(env.OWNER_TELEGRAM_CHAT_ID, messages.ownerCancelled(data))
+    await deps.telegram.sendMessage(env.OWNER_TELEGRAM_CHAT_ID, ownerMessages.cancelled(data))
   } catch (error) {
     logError('reservations.cancel.notify.owner', error, { reservationCode: cancelled.reservationCode })
   }

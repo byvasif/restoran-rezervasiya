@@ -5,7 +5,8 @@ import { buildEventInput, type CalendarPort } from '@/lib/calendar/calendar-port
 import { prisma } from '@/lib/db/prisma'
 import { logError, logInfo, maskName, maskPhone } from '@/lib/security/log'
 import { verifyChatLink } from '@/lib/telegram/link'
-import { messages } from '@/lib/telegram/messages.az'
+import { getCustomerMessages, ownerMessages, type ReservationMessageData } from '@/lib/telegram/messages'
+import { DEFAULT_LOCALE, toLocale, type Locale } from '@/i18n/locales'
 import type { TelegramPort } from '@/lib/telegram/telegram-port'
 import { addMinutes, dateStringToDbDate, toUtcInstant } from '@/lib/time/timezone'
 import type { CreateReservationInput } from '@/lib/validation/schemas'
@@ -24,8 +25,8 @@ export type CreateResult =
   | { ok: true; reservation: Reservation; cancelUrl: string }
   | { ok: false; code: CreateFailureCode }
 
-export function buildCancelUrl(token: string): string {
-  return `${env.APP_BASE_URL.replace(/\/$/, '')}/legv/${token}`
+export function buildCancelUrl(token: string, locale: Locale = DEFAULT_LOCALE): string {
+  return `${env.APP_BASE_URL.replace(/\/$/, '')}/${locale}/legv/${token}`
 }
 
 /**
@@ -43,13 +44,18 @@ export async function createReservation(
   deps: ReservationDeps,
 ): Promise<CreateResult> {
   const settings = await getSettings()
+  const locale = toLocale(input.locale)
 
   // Təkrar göndərilən sorğu: eyni açarla artıq yaradılmış rezervasiya qaytarılır.
   if (input.idempotencyKey) {
     const existing = await prisma.reservation.findUnique({ where: { idempotencyKey: input.idempotencyKey } })
     if (existing) {
       return existing.status === 'confirmed'
-        ? { ok: true, reservation: existing, cancelUrl: buildCancelUrl(existing.cancellationToken) }
+        ? {
+            ok: true,
+            reservation: existing,
+            cancelUrl: buildCancelUrl(existing.cancellationToken, toLocale(existing.locale)),
+          }
         : { ok: false, code: 'CALENDAR_FAILED' }
     }
   }
@@ -97,6 +103,7 @@ export async function createReservation(
           startTime: input.time,
           endTime,
           timezone: settings.timezone,
+          locale,
           status: 'confirmed',
           telegramChatId,
           telegramUsername: user?.telegramUsername ?? null,
@@ -112,7 +119,11 @@ export async function createReservation(
       if (String(target).includes('idempotency') && input.idempotencyKey) {
         const existing = await prisma.reservation.findUnique({ where: { idempotencyKey: input.idempotencyKey } })
         if (existing && existing.status === 'confirmed') {
-          return { ok: true, reservation: existing, cancelUrl: buildCancelUrl(existing.cancellationToken) }
+          return {
+            ok: true,
+            reservation: existing,
+            cancelUrl: buildCancelUrl(existing.cancellationToken, toLocale(existing.locale)),
+          }
         }
       }
       logInfo('reservations.create', 'Slot paralel sorğu ilə tutuldu', { date: input.date, time: input.time })
@@ -150,13 +161,13 @@ export async function createReservation(
     data: { googleCalendarEventId: eventId },
   })
 
-  const cancelUrl = buildCancelUrl(saved.cancellationToken)
+  const cancelUrl = buildCancelUrl(saved.cancellationToken, locale)
 
-  await notify(deps.telegram, {
-    restaurantName: settings.restaurantName,
-    ...eventData,
-    calendarEventCreated: true,
-  }, cancelUrl, settings.cancellationDeadlineHours, saved.telegramChatId)
+  await notify(
+    deps.telegram,
+    { restaurantName: settings.restaurantName, ...eventData, calendarEventCreated: true },
+    { cancelUrl, deadlineHours: settings.cancellationDeadlineHours, locale, customerChatId: saved.telegramChatId },
+  )
 
   logInfo('reservations.create', 'Rezervasiya yaradıldı', {
     reservationCode: saved.reservationCode,
@@ -169,25 +180,33 @@ export async function createReservation(
   return { ok: true, reservation: saved, cancelUrl }
 }
 
-/** Telegram bildirişləri. Buradakı xəta rezervasiyanı pozmur — yalnız loglanır. */
+/**
+ * Telegram bildirişləri. Buradakı xəta rezervasiyanı pozmur — yalnız loglanır.
+ * Müştəri öz dilində, sahibkar isə həmişə Azərbaycanca mesaj alır.
+ */
 async function notify(
   telegram: TelegramPort,
-  data: Parameters<typeof messages.customerConfirmation>[0],
-  cancelUrl: string,
-  deadlineHours: number,
-  customerChatId: string | null,
+  data: ReservationMessageData,
+  options: { cancelUrl: string; deadlineHours: number; locale: Locale; customerChatId: string | null },
 ): Promise<void> {
-  if (customerChatId) {
+  if (options.customerChatId) {
     try {
-      const message = messages.customerConfirmation(data, cancelUrl, deadlineHours)
-      await telegram.sendMessage(customerChatId, message.text, message.keyboard)
+      const message = getCustomerMessages(options.locale).confirmation(
+        data,
+        options.cancelUrl,
+        options.deadlineHours,
+      )
+      await telegram.sendMessage(options.customerChatId, message.text, message.keyboard)
     } catch (error) {
       logError('reservations.notify.customer', error, { reservationCode: data.reservationCode })
     }
   }
 
   try {
-    await telegram.sendMessage(env.OWNER_TELEGRAM_CHAT_ID, messages.ownerNotification(data))
+    await telegram.sendMessage(
+      env.OWNER_TELEGRAM_CHAT_ID,
+      ownerMessages.newReservation(data, options.locale),
+    )
   } catch (error) {
     logError('reservations.notify.owner', error, { reservationCode: data.reservationCode })
   }

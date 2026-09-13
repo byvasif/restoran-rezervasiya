@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { headers } from 'next/headers'
 import { Source_Serif_4 } from 'next/font/google'
+import { getDictionary, toLocale } from '@/i18n'
 import './globals.css'
 
 const sourceSerif = Source_Serif_4({
@@ -9,9 +11,15 @@ const sourceSerif = Source_Serif_4({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: 'Masa rezervasiyası',
-  description: 'Restoranda masa rezervasiya etmək üçün tarix və saat seçin.',
+/** Başlıq və təsvir aktiv dildə verilir — dil middleware-dən gələn başlıqdadır. */
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = toLocale((await headers()).get('x-locale'))
+  const dictionary = getDictionary(locale)
+
+  return {
+    title: dictionary.meta.title,
+    description: dictionary.meta.description,
+  }
 }
 
 export const viewport: Viewport = {
@@ -20,9 +28,11 @@ export const viewport: Viewport = {
   themeColor: '#6E1023',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = toLocale((await headers()).get('x-locale'))
+
   return (
-    <html lang="az" className={sourceSerif.variable}>
+    <html lang={locale} className={sourceSerif.variable}>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   )

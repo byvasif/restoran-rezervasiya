@@ -1,5 +1,7 @@
 'use client'
 
+import { fill, type Dictionary } from '@/i18n'
+
 export interface GuestDetails {
   firstName: string
   lastName: string
@@ -10,24 +12,31 @@ interface GuestFormProps {
   value: GuestDetails
   errors: Partial<Record<keyof GuestDetails, string>>
   onChange: (value: GuestDetails) => void
+  dictionary: Dictionary
 }
 
-const FIELDS: Array<{ name: keyof GuestDetails; label: string; type: string; hint?: string; autoComplete: string }> = [
-  { name: 'firstName', label: 'Ad', type: 'text', autoComplete: 'given-name' },
-  { name: 'lastName', label: 'Soyad', type: 'text', autoComplete: 'family-name' },
-  {
-    name: 'phoneNumber',
-    label: 'Telefon nömrəsi',
-    type: 'tel',
-    hint: 'Nümunə: 050 123 45 67',
-    autoComplete: 'tel',
-  },
-]
+export function GuestForm({ value, errors, onChange, dictionary }: GuestFormProps) {
+  const fields: Array<{
+    name: keyof GuestDetails
+    label: string
+    type: string
+    hint?: string
+    autoComplete: string
+  }> = [
+    { name: 'firstName', label: dictionary.booking.firstName, type: 'text', autoComplete: 'given-name' },
+    { name: 'lastName', label: dictionary.booking.lastName, type: 'text', autoComplete: 'family-name' },
+    {
+      name: 'phoneNumber',
+      label: dictionary.booking.phone,
+      type: 'tel',
+      hint: fill(dictionary.booking.phoneHint, { example: dictionary.date.phoneExample }),
+      autoComplete: 'tel',
+    },
+  ]
 
-export function GuestForm({ value, errors, onChange }: GuestFormProps) {
   return (
     <div className="space-y-4">
-      {FIELDS.map((field) => (
+      {fields.map((field) => (
         <label key={field.name} className="block">
           <span className="mb-1.5 block text-[15px] text-ink">{field.label}</span>
           <input

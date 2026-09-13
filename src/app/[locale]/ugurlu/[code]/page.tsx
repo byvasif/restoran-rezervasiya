@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { getSettings } from '@/config/business'
 import { findByCode } from '@/lib/reservations/cancel'
-import { formatDateAz } from '@/lib/time/format-az'
+import { getDictionary, toLocale } from '@/i18n'
+import { formatDateLong } from '@/i18n/format-date'
 import { dbDateToDateString } from '@/lib/time/timezone'
 import { PageShell } from '@/components/ui/PageShell'
 import { SuccessPanel } from '@/components/booking/SuccessPanel'
@@ -9,8 +10,11 @@ import { SuccessPanel } from '@/components/booking/SuccessPanel'
 export const dynamic = 'force-dynamic'
 
 /** Rezervasiya uğurlu səhifəsi — kod ilə açılır, ləğv tokeni URL-də daşınmır. */
-export default async function SuccessPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params
+export default async function SuccessPage({ params }: { params: Promise<{ locale: string; code: string }> }) {
+  const { locale: rawLocale, code } = await params
+  const locale = toLocale(rawLocale)
+  const dictionary = getDictionary(locale)
+
   const reservation = await findByCode(code)
   if (!reservation) notFound()
 
@@ -18,8 +22,19 @@ export default async function SuccessPage({ params }: { params: Promise<{ code: 
   const date = dbDateToDateString(reservation.reservationDate)
   const isCancelled = reservation.status === 'cancelled'
 
+  const rows: Array<[string, string]> = [
+    [dictionary.booking.labelName, `${reservation.firstName} ${reservation.lastName}`],
+    [dictionary.booking.labelDate, formatDateLong(date, locale)],
+    [dictionary.booking.labelTime, `${reservation.startTime} – ${reservation.endTime}`],
+    [dictionary.booking.labelCode, reservation.reservationCode],
+  ]
+
   return (
-    <PageShell restaurantName={settings.restaurantName} restaurantAddress={settings.restaurantAddress}>
+    <PageShell
+      locale={locale}
+      restaurantName={settings.restaurantName}
+      restaurantAddress={settings.restaurantAddress}
+    >
       <div className="flex items-start gap-4">
         <span
           aria-hidden
@@ -29,21 +44,16 @@ export default async function SuccessPage({ params }: { params: Promise<{ code: 
         </span>
         <div>
           <h2 className="font-display text-[26px] leading-tight text-ink">
-            {isCancelled ? 'Rezervasiya ləğv edilib' : 'Rezervasiyanız təsdiqləndi'}
+            {isCancelled ? dictionary.success.cancelledHeading : dictionary.success.confirmedHeading}
           </h2>
           <p className="mt-1 text-[15px] text-ink-soft">
-            {isCancelled ? 'Bu vaxt yenidən boşdur.' : 'Sizi gözləyirik.'}
+            {isCancelled ? dictionary.success.cancelledSubtitle : dictionary.success.confirmedSubtitle}
           </p>
         </div>
       </div>
 
       <dl className="mt-7 rounded-xl border border-sand-dark border-l-4 border-l-nar-700 bg-sand/60">
-        {[
-          ['Ad, soyad', `${reservation.firstName} ${reservation.lastName}`],
-          ['Tarix', formatDateAz(date)],
-          ['Saat', `${reservation.startTime} – ${reservation.endTime}`],
-          ['Rezervasiya kodu', reservation.reservationCode],
-        ].map(([label, value], index) => (
+        {rows.map(([label, value], index) => (
           <div
             key={label}
             className={`flex items-baseline justify-between gap-4 px-4 py-3 ${
@@ -51,7 +61,11 @@ export default async function SuccessPage({ params }: { params: Promise<{ code: 
             }`}
           >
             <dt className="shrink-0 text-[14px] text-ink-soft">{label}</dt>
-            <dd className={`text-right text-[16px] text-ink ${label === 'Rezervasiya kodu' ? 'font-display text-[20px]' : ''}`}>
+            <dd
+              className={`text-right text-[16px] text-ink ${
+                label === dictionary.booking.labelCode ? 'font-display text-[20px]' : ''
+              }`}
+            >
               {value}
             </dd>
           </div>
@@ -63,11 +77,12 @@ export default async function SuccessPage({ params }: { params: Promise<{ code: 
           <SuccessPanel
             reservationCode={reservation.reservationCode}
             deadlineHours={settings.cancellationDeadlineHours}
+            dictionary={dictionary}
           />
         </div>
       ) : (
-        <a className="mt-7 inline-block text-[15px] text-nar-700 underline underline-offset-4" href="/">
-          Yeni rezervasiya et
+        <a className="mt-7 inline-block text-[15px] text-nar-700 underline underline-offset-4" href={`/${locale}`}>
+          {dictionary.nav.newReservation}
         </a>
       )}
     </PageShell>

@@ -1,14 +1,17 @@
 'use client'
 
+import type { Dictionary } from '@/i18n'
+
 interface TimeGridProps {
   slots: string[]
   selected: string | null
   onSelect: (time: string) => void
+  dictionary: Dictionary
 }
 
-export function TimeGrid({ slots, selected, onSelect }: TimeGridProps) {
+export function TimeGrid({ slots, selected, onSelect, dictionary }: TimeGridProps) {
   return (
-    <ul className="grid grid-cols-3 gap-2" role="listbox" aria-label="Saat seçimi">
+    <ul className="grid grid-cols-3 gap-2" role="listbox" aria-label={dictionary.booking.timeAriaLabel}>
       {slots.map((slot) => {
         const isSelected = slot === selected
         return (

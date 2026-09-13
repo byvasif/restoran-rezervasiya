@@ -1,4 +1,5 @@
-import { formatDateAz } from '@/lib/time/format-az'
+import type { Dictionary, Locale } from '@/i18n'
+import { formatDateLong } from '@/i18n/format-date'
 
 interface ReviewCardProps {
   restaurantName: string
@@ -8,6 +9,8 @@ interface ReviewCardProps {
   date: string
   time: string
   endTime: string
+  locale: Locale
+  dictionary: Dictionary
 }
 
 /** Təsdiqdən əvvəl müştərinin daxil etdiyi məlumatların yekun görünüşü. */
@@ -19,13 +22,15 @@ export function ReviewCard({
   date,
   time,
   endTime,
+  locale,
+  dictionary,
 }: ReviewCardProps) {
-  const rows = [
-    ['Restoran', restaurantName],
-    ['Ad, soyad', `${firstName} ${lastName}`],
-    ['Telefon', phoneNumber],
-    ['Tarix', formatDateAz(date)],
-    ['Saat', `${time} – ${endTime}`],
+  const rows: Array<[string, string]> = [
+    [dictionary.booking.labelRestaurant, restaurantName],
+    [dictionary.booking.labelName, `${firstName} ${lastName}`],
+    [dictionary.booking.labelPhone, phoneNumber],
+    [dictionary.booking.labelDate, formatDateLong(date, locale)],
+    [dictionary.booking.labelTime, `${time} – ${endTime}`],
   ]
 
   return (

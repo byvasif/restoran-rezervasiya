@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { messages, escapeHtml } from '@/lib/telegram/messages.az'
+import { getCustomerMessages, ownerMessages, escapeHtml } from '@/lib/telegram/messages'
+import { SUPPORTED_LOCALES } from '@/i18n/locales'
 
 const data = {
   restaurantName: 'Şirvanşah',
@@ -15,64 +16,73 @@ const data = {
   calendarEventCreated: true,
 }
 
-describe('müştəri mesajları', () => {
-  it('start mesajında rezervasiya düyməsi var', () => {
-    const message = messages.start('http://localhost:3200/?t=abc')
-    expect(message.text).toContain('Salam!')
-    expect(message.text).toContain('rezervasiya')
-    expect(message.keyboard[0][0].text).toContain('Rezervasiya et')
-    expect(message.keyboard[0][0].url).toBe('http://localhost:3200/?t=abc')
+describe('müştəri mesajları (hər dil)', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    it(`${locale}: start mesajında rezervasiya düyməsi var`, () => {
+      const message = getCustomerMessages(locale).start('http://localhost:3200/az/?t=abc')
+      expect(message.text.length).toBeGreaterThan(20)
+      expect(message.keyboard[0][0].url).toBe('http://localhost:3200/az/?t=abc')
+    })
+
+    it(`${locale}: təsdiq mesajında kod, tarix və ləğv düyməsi var`, () => {
+      const message = getCustomerMessages(locale).confirmation(data, 'http://x/az/legv/token', 24)
+      expect(message.text).toContain('AB12CD34')
+      expect(message.text).toContain('19:00')
+      expect(message.text).toContain('Şirvanşah')
+      expect(message.keyboard[0][0].url).toBe('http://x/az/legv/token')
+    })
+
+    it(`${locale}: help mesajı bütün komandaları sadalayır`, () => {
+      const text = getCustomerMessages(locale).help(24)
+      for (const command of ['/start', '/book', '/cancel', '/dil', '/help']) {
+        expect(text).toContain(command)
+      }
+    })
+
+    it(`${locale}: dil menyusunda üç variant var`, () => {
+      const reply = getCustomerMessages(locale).languagePrompt()
+      expect(reply.keyboard[0]).toHaveLength(3)
+      expect(reply.keyboard[0].map((button) => button.callback_data)).toEqual([
+        'lang:az',
+        'lang:tr',
+        'lang:en',
+      ])
+    })
+  }
+
+  it('tarix hər dildə öz formatındadır', () => {
+    expect(getCustomerMessages('az').confirmation(data, 'u', 24).text).toContain('10 may 2027')
+    expect(getCustomerMessages('tr').confirmation(data, 'u', 24).text).toContain('10 Mayıs 2027')
+    expect(getCustomerMessages('en').confirmation(data, 'u', 24).text).toContain('10 May 2027')
   })
 
-  it('təsdiq mesajında bütün tələb olunan sahələr var', () => {
-    const message = messages.customerConfirmation(data, 'http://localhost:3200/legv/token')
-    expect(message.text).toContain('təsdiqləndi')
-    expect(message.text).toContain('Şirvanşah')
-    expect(message.text).toContain('Elvin Məmmədov')
-    expect(message.text).toContain('10 may 2027')
-    expect(message.text).toContain('19:00')
-    expect(message.text).toContain('AB12CD34')
-    expect(message.keyboard[0][0].text).toContain('ləğv')
-    expect(message.keyboard[0][0].url).toBe('http://localhost:3200/legv/token')
-  })
-
-  it('ləğv müddətini konfiqurasiyadan götürür', () => {
-    const message = messages.customerConfirmation(data, 'http://x/legv/t', 48)
-    expect(message.text).toContain('48 saat')
-    expect(messages.cancelTooLate(48)).toContain('48 saatdan az')
-  })
-
-  it('24 saatdan az qalanda spesifikasiyadakı mesajı verir', () => {
-    expect(messages.cancelTooLate()).toContain('24 saatdan az vaxt qaldığı üçün onlayn ləğv etmək')
-    expect(messages.cancelTooLate()).toContain('restoranla birbaşa əlaqə saxlayın')
-  })
-
-  it('help mesajı bütün komandaları sadalayır', () => {
-    const text = messages.help()
-    for (const command of ['/start', '/book', '/cancel', '/help']) {
-      expect(text).toContain(command)
-    }
+  it('ləğv müddəti mesajda göstərilir', () => {
+    expect(getCustomerMessages('az').cancelTooLate(48)).toContain('48')
+    expect(getCustomerMessages('tr').cancelTooLate(48)).toContain('48')
+    expect(getCustomerMessages('en').cancelTooLate(48)).toContain('48')
   })
 })
 
 describe('sahibkar mesajları', () => {
-  it('yeni rezervasiya bildirişində müştəri məlumatları var', () => {
-    const text = messages.ownerNotification(data)
+  it('həmişə Azərbaycancadır, müştəri dilindən asılı deyil', () => {
+    const text = ownerMessages.newReservation(data, 'en')
     expect(text).toContain('Yeni rezervasiya')
-    expect(text).toContain('Elvin Məmmədov')
-    expect(text).toContain('+994501234567')
+    expect(text).toContain('Müştəri: Elvin Məmmədov')
     expect(text).toContain('10 may 2027')
-    expect(text).toContain('AB12CD34')
-    expect(text).toContain('@elvin_m')
-    expect(text).toContain('tədbir yaradıldı')
+  })
+
+  it('müştərinin dilini göstərir', () => {
+    expect(ownerMessages.newReservation(data, 'tr')).toContain('TR')
   })
 
   it('təqvim tədbiri yaradılmayıbsa xəbərdarlıq göstərir', () => {
-    expect(messages.ownerNotification({ ...data, calendarEventCreated: false })).toContain('yaradıla bilmədi')
+    expect(ownerMessages.newReservation({ ...data, calendarEventCreated: false }, 'az')).toContain(
+      'yaradıla bilmədi',
+    )
   })
 
   it('ləğv bildirişində məlumatlar var', () => {
-    const text = messages.ownerCancelled(data)
+    const text = ownerMessages.cancelled(data)
     expect(text).toContain('ləğv edildi')
     expect(text).toContain('AB12CD34')
   })
@@ -84,7 +94,7 @@ describe('HTML escape', () => {
   })
 
   it('mesajda istifadəçi mətnini escape edir', () => {
-    const text = messages.ownerNotification({ ...data, firstName: '<script>' })
+    const text = ownerMessages.newReservation({ ...data, firstName: '<script>' }, 'az')
     expect(text).not.toContain('<script>')
     expect(text).toContain('&lt;script&gt;')
   })

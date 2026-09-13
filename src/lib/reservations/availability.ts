@@ -27,10 +27,13 @@ export type AvailabilityResult =
       date: string
       slots: string[]
       closed: boolean
+      /** Bağlanma səbəbinin növü — mətn API qatında tərcümə olunur. */
+      closedCode?: 'WEEKDAY' | 'DATE'
+      /** Sahibkarın yazdığı sərbəst səbəb (varsa) — tərcümə edilmir. */
       reason?: string
       durationMinutes: number
     }
-  | { ok: false; code: 'INVALID_DATE' | 'PAST_DATE'; message: string }
+  | { ok: false; code: 'INVALID_DATE' | 'PAST_DATE' }
 
 /**
  * Google Calendar-dan gələn UTC aralıqlarını həmin günün divar saatına çevirir.
@@ -71,14 +74,14 @@ async function reservedIntervals(date: string): Promise<BusyInterval[]> {
  */
 export async function getAvailability(date: string, deps: AvailabilityDeps): Promise<AvailabilityResult> {
   if (!isValidDateString(date)) {
-    return { ok: false, code: 'INVALID_DATE', message: 'Tarix düzgün formatda deyil.' }
+    return { ok: false, code: 'INVALID_DATE' }
   }
 
   const settings: RestaurantSettings = await getSettings()
   const timezone = settings.timezone
 
   if (isPastDate(date, timezone)) {
-    return { ok: false, code: 'PAST_DATE', message: 'Keçmiş tarix üçün rezervasiya mümkün deyil.' }
+    return { ok: false, code: 'PAST_DATE' }
   }
 
   const closed = await getClosedDate(date)
@@ -88,7 +91,8 @@ export async function getAvailability(date: string, deps: AvailabilityDeps): Pro
       date,
       slots: [],
       closed: true,
-      reason: closed.reason ?? 'Bu tarixdə restoran bağlıdır.',
+      closedCode: 'DATE',
+      reason: closed.reason ?? undefined,
       durationMinutes: settings.bookingDurationMinutes,
     }
   }
@@ -100,7 +104,7 @@ export async function getAvailability(date: string, deps: AvailabilityDeps): Pro
       date,
       slots: [],
       closed: true,
-      reason: 'Bu gün restoran işləmir.',
+      closedCode: 'WEEKDAY',
       durationMinutes: settings.bookingDurationMinutes,
     }
   }

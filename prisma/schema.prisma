@@ -21,6 +21,8 @@ model User {
   firstName        String?  @map("first_name")
   lastName         String?  @map("last_name")
   phoneNumber      String?  @map("phone_number")
+  /// Botun bu istifadəçi ilə danışdığı dil: az | tr | en
+  locale           String?
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -43,6 +45,8 @@ model Reservation {
   startTime             String            @map("start_time") @db.VarChar(5)
   endTime               String            @map("end_time") @db.VarChar(5)
   timezone              String
+  /// Müştərinin rezervasiya anındakı dili — sonrakı bildirişlər də bu dildə gedir.
+  locale                String            @default("az")
   status                ReservationStatus @default(confirmed)
   telegramChatId        String?           @map("telegram_chat_id")
   telegramUsername      String?           @map("telegram_username")

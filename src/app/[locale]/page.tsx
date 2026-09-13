@@ -1,5 +1,6 @@
 import { getSettings } from '@/config/business'
 import { getBookingDays } from '@/lib/reservations/calendar-days'
+import { fill, getDictionary, toLocale } from '@/i18n'
 import { BookingFlow } from '@/components/booking/BookingFlow'
 import { HoursSummary } from '@/components/booking/HoursSummary'
 import { PageShell } from '@/components/ui/PageShell'
@@ -11,26 +12,39 @@ export const dynamic = 'force-dynamic'
  * chat ID-sini imzalı şəkildə daşıyır — server tərəfdə yoxlanılır.
  */
 export default async function BookingPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ locale: string }>
   searchParams: Promise<{ t?: string }>
 }) {
-  const [settings, calendar, params] = await Promise.all([getSettings(), getBookingDays(), searchParams])
+  const locale = toLocale((await params).locale)
+  const dictionary = getDictionary(locale)
+  const [settings, calendar, query] = await Promise.all([
+    getSettings(),
+    getBookingDays(21, locale),
+    searchParams,
+  ])
 
   return (
-    <PageShell restaurantName={settings.restaurantName} restaurantAddress={settings.restaurantAddress}>
+    <PageShell
+      locale={locale}
+      restaurantName={settings.restaurantName}
+      restaurantAddress={settings.restaurantAddress}
+    >
       <p className="mb-6 text-[16px] leading-relaxed text-ink-soft">
-        Masa rezervasiyası {settings.bookingDurationMinutes} dəqiqədir. Tarix və saatı seçin, adınızı yazın — rezervasiya
-        dərhal təsdiqlənir.
+        {fill(dictionary.booking.intro, { minutes: settings.bookingDurationMinutes })}
       </p>
 
       <BookingFlow
+        locale={locale}
+        dictionary={dictionary}
         restaurantName={settings.restaurantName}
         days={calendar.days}
-        telegramToken={params.t}
+        telegramToken={query.t}
       />
 
-      <HoursSummary />
+      <HoursSummary locale={locale} />
     </PageShell>
   )
 }

@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { fill, type Dictionary } from '@/i18n'
 
 /**
  * Ləğv linki URL-də daşınmır — rezervasiyanı yaradan brauzer onu
  * sessionStorage-dən oxuyur. Link həmçinin Telegram mesajında gəlir.
  */
-export function SuccessPanel({ reservationCode, deadlineHours }: { reservationCode: string; deadlineHours: number }) {
+export function SuccessPanel({
+  reservationCode,
+  deadlineHours,
+  dictionary,
+}: {
+  reservationCode: string
+  deadlineHours: number
+  dictionary: Dictionary
+}) {
   const [cancelUrl, setCancelUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -21,8 +30,7 @@ export function SuccessPanel({ reservationCode, deadlineHours }: { reservationCo
   if (!cancelUrl) {
     return (
       <p className="text-[15px] leading-relaxed text-ink-soft">
-        Ləğv linki Telegram mesajınızda göndərilib. Rezervasiyanı başlanma vaxtına {deadlineHours} saat qalanadək ləğv
-        edə bilərsiniz.
+        {fill(dictionary.success.cancelViaTelegram, { hours: deadlineHours })}
       </p>
     )
   }
@@ -30,10 +38,10 @@ export function SuccessPanel({ reservationCode, deadlineHours }: { reservationCo
   return (
     <div className="space-y-3">
       <p className="text-[15px] leading-relaxed text-ink-soft">
-        Rezervasiyanı başlanma vaxtına {deadlineHours} saat qalanadək ləğv edə bilərsiniz.
+        {fill(dictionary.success.cancelHint, { hours: deadlineHours })}
       </p>
       <Button variant="danger" full onClick={() => window.location.assign(cancelUrl)}>
-        Rezervasiyanı ləğv et
+        {dictionary.success.cancelButton}
       </Button>
     </div>
   )

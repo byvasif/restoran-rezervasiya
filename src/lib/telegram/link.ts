@@ -56,9 +56,15 @@ export function verifyChatLink(token: string, secret: string, now: number = Date
   return /^-?\d+$/.test(value) ? value : null
 }
 
-/** Bot düyməsindəki rezervasiya linkini qurur. */
-export function buildBookingUrl(baseUrl: string, chatId: string, secret: string): string {
+/** Bot düyməsindəki rezervasiya linkini qurur — dil prefiksi ilə birlikdə. */
+export function buildBookingUrl(
+  baseUrl: string,
+  chatId: string,
+  secret: string,
+  locale: string = 'az',
+): string {
   const url = new URL(baseUrl)
+  url.pathname = `/${locale}`
   url.searchParams.set('t', signChatLink(chatId, secret))
   return url.toString()
 }
